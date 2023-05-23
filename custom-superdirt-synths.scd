@@ -2,9 +2,9 @@ SynthDef(\sinswarm, {
     | out, sustain=1, decay=0, freq=440, speed=1, begin=0, end=1, pan, accelerate, offset|
 var env = EnvGen.ar(Env.adsr, timeScale:sustain, doneAction:2);
   var osc = DynKlang.ar(`[
-    Array.rand(3, freq - 10, freq + 10),
-    Array.with(3, 1),
-    Array.rand(3, 0, pi)
+    [freq-2, freq-1, freq, freq+1, freq+2],
+    [0.1, 0.2, 0.2, 0.2, 0.1],
+    [0, 1.5, 0, 1.5, 0]
   ]);
   OffsetOut.ar(out, DirtPan.ar(osc, ~dirt.numChannels, pan, env));
 }).add;
