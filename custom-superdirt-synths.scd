@@ -1,4 +1,4 @@
-SynthDef(\sinswarm, {
+SynthDef(\sins, {
     | out, sustain=1, decay=0, freq=440, speed=1, begin=0, end=1, pan, accelerate, offset|
 var env = EnvGen.ar(Env.adsr, timeScale:sustain, doneAction:2);
   var osc = DynKlang.ar(`[
@@ -10,12 +10,18 @@ var env = EnvGen.ar(Env.adsr, timeScale:sustain, doneAction:2);
 }).add;
 
 
-SynthDef(\sin, {
+SynthDef(\sinswarm, {
     | out, sustain=1, decay=0, freq=440, speed=1, begin=0, end=1, pan, accelerate, offset|
-  var env = EnvGen.ar(Env.pairs([[0,0],[0.05,1],[0.2,1-decay],[0.95,1-decay],[1,0]], -3), timeScale:sustain, doneAction:2);
-  var osc = SinOsc.ar(freq);
+  var env = EnvGen.ar(Env.adsr, timeScale:sustain, doneAction:2);
+  var count = 48;
+  var osc = DynKlang.ar(`[
+    Array.interpolation(count, freq, freq*9/8),
+    Array.rand(count, 0.25, 0.5),
+    Array.fill(count, pi),
+  ]);
   OffsetOut.ar(out, DirtPan.ar(osc, ~dirt.numChannels, pan, env));
 }).add;
+
 
 
 SynthDef(\acid309, {|out, sustain=1, pan, accelerate, freq |
