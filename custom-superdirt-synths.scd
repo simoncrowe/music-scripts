@@ -25,21 +25,21 @@ SynthDef(\sinswarm, {
 
 
 SynthDef(\acid309, {|out, sustain=1, pan, accelerate, freq |
-	var env1, env2, son, midiNote, pitch, amp, gate;
-	gate=1;
-	amp = 0.5;
-	midiNote = freq.cpsmidi;
-	pitch = Lag.kr(midiNote, 0.12 * (1 - Trig.kr(gate, 0.001)) * gate);
-	env1 = EnvGen.ar(Env.new([0, 1.0, 0, 0],
-							 [0.001, 2.0, 0.04],
-							 [0, -4, -4], 2), 
-							 gate, amp, doneAction:2);
-	env2 = EnvGen.ar(Env.adsr(0.001, 0.8, 0, 0.8, 70, -4), gate);
-	son = LFPulse.ar(pitch.midicps, 0.0, 0.51, 2, -1);
+    var env1, env2, son, midiNote, pitch, amp, gate;
+    gate=1;
+    amp = 0.5;
+    midiNote = freq.cpsmidi;
+    pitch = Lag.kr(midiNote, 0.12 * (1 - Trig.kr(gate, 0.001)) * gate);
+    env1 = EnvGen.ar(Env.new([0, 1.0, 0, 0],
+                             [0.001, 2.0, 0.04],
+                             [0, -4, -4], 2), 
+                             gate, amp, doneAction:2);
+    env2 = EnvGen.ar(Env.adsr(0.001, 0.8, 0, 0.8, 70, -4), gate);
+    son = LFPulse.ar(pitch.midicps, 0.0, 0.51, 2, -1);
 
-	son = RLPF.ar(son, (pitch + env2).midicps, 0.3);
+    son = RLPF.ar(son, (pitch + env2).midicps, 0.3);
 
-	OffsetOut.ar(out, DirtPan.ar(son, ~dirt.numChannels, pan, env1));
+    OffsetOut.ar(out, DirtPan.ar(son, ~dirt.numChannels, pan, env1));
 }).add;
 
 
@@ -76,21 +76,21 @@ SynthDef(\grind, {
 
     var detune = [0.98, 1.0, 1.02];
     var sub = Mix(detune.collect { |d| SinOsc.ar((freq) * d) }) * 0.3;
-	
-	var noise = GrayNoise.ar(0.02);
+    
+    var noise = GrayNoise.ar(0.02);
 
     var x = LFNoise1.kr(0.1).range(0, 5);
     var y = LFNoise1.kr(0.15).range(0, 5);
     var z = Line.kr(0, 10, 60); // slow drift
     var perlin = Perlin3.ar(x, y, z) * 0.3;
 
-	var pulse = LFPulse.ar(freq, 0, perlin, 0.5);
+    var pulse = LFPulse.ar(freq, 0, perlin, 0.5);
 
-	var voice = sub + noise + pulse;
-	
+    var voice = sub + noise + pulse;
+    
     var cutoffBase = 200;
     var cutoffEnvAmt = 1000;
-	var cutoffPerlinAmt = 500;
+    var cutoffPerlinAmt = 500;
     var cutoff = (cutoffBase + (env * cutoffEnvAmt) - (perlin * cutoffPerlinAmt)).clip(40, 12000);
     voice = RLPF.ar(voice, cutoff, 0.3);
 
@@ -103,45 +103,47 @@ SynthDef(\grind, {
 SynthDef(\cthulu, {
     | out=0, sustain=10, freq=45, pan=0 |
 
-    var line, env, detune, sub, noise, dripTrig, drips, slime,
-        x, y, z, perlin, cutoffBase, cutoffEnvAmt, cutoffPerlinAmt, cutoff,
+    var line, env, detune, sub, vocal, breath, noise, dripTrig, drips, rushing,
+        x, y, z, perlin1, perlin2, cutoffBase, cutoffEnvAmt, cutoffPerlinAmt, cutoff,
         voice;
 
     line = Line.ar(0, 1, sustain, doneAction: 2);
     env  = IEnvGen.ar(Env.adsr(0.4, 0.3, 0.5, 1.5, 1, -4), line);
 
-    // Cavern drift (Perlin)
     x = LFNoise1.kr(0.05).range(0, 4);
     y = LFNoise1.kr(0.08).range(0, 4);
     z = Line.kr(0, 20, sustain);
-    perlin = Perlin3.ar(x, y, z);
+    perlin1 = Perlin3.ar(x, y, z);
 
-    // Growly core
-    detune = [0.75, 1.0, 1.25];
-    sub = Mix(detune.collect { |d| Formant.ar(freq, 
-	                                          XLine.kr((freq * d * perlin)/4, freq * d * perlin * 64, sustain),
-											  freq * d * 4
-											  , 0.125) } ) * 0.3;
+    u = LFNoise1.kr(0.08).range(0, 4);
+    v = LFNoise1.kr(0.05).range(0, 4);
+    w = Line.kr(0, 20, sustain);
+    perlin2 = Perlin3.ar(u, v, w);
 
-    // Wind + drips 
-    noise    = Crackle.ar(1.9) * 0.05 + PinkNoise.ar(0.03);
-    dripTrig = Dust2.ar(0.25);
-    drips    = Decay2.ar(dripTrig, 0.01, 0.2) * SinOsc.ar(freq * 4, 0, 0.4);
-    slime    = BPF.ar(noise, LFNoise1.kr(0.3).range(300, 2000), 0.2) + drips;
+    detune = [0.98, 1.0, 1.2];
+    sub = Mix(detune.collect { |d| SinOsc.ar(freq / 2 * d)* 0.33 } );
+    vocal = Formant.ar(freq/2, 
+                       (freq/2) + (freq * perlin2 * 2),
+                       freq * SinOsc.kr(perlin1));
+    
+    breath = Formlet.ar(PinkNoise.ar(0.02), freq*4, 0.0001, 0.2);
 
-    // Filter motion
+    dripTrig  = Dust2.ar(0.25);
+    drips     = Decay2.ar(dripTrig, 0.01, 0.2) * SinOsc.ar(freq * 4, 0);
+    
+    noise     = Crackle.ar(1.9) * 0.05 + PinkNoise.ar(0.03);
+    rushing   = BPF.ar(noise, LFNoise1.kr(0.3).range(300, 2000), 1);
+
     cutoffBase      = 150;
     cutoffEnvAmt    = 800;
     cutoffPerlinAmt = 600;
-    cutoff = (cutoffBase + env * cutoffEnvAmt + perlin * cutoffPerlinAmt).clip(40, 8000);
+    cutoff = (cutoffBase + env * cutoffEnvAmt + perlin1 * cutoffPerlinAmt).clip(40, 8000) * (1 + SinOsc.kr(0.25, 0, 0.5)); 
 
-    voice = sub + (slime * 0.2);
+    voice = sub + vocal + breath + ((drips + rushing) * 1.5);
     voice = RLPF.ar(voice, cutoff, 0.25);
 
-    // Cavern verb (tame levels a bit)
-    voice = voice + (GVerb.ar(voice, 100, 6, 0.2, 0.5, 15, 0.6, 0.3, 0.2) * 0.25);
+    voice = voice + (GVerb.ar(voice, 120, 6, 0.2, 0.5, 15, 0.6, 0.3, 0.2) * 0.25);
 
-    // Final shaping
     voice = LeakDC.ar(voice * env * 0.9); 
 
     OffsetOut.ar(out, DirtPan.ar(voice, ~dirt.numChannels, pan));
