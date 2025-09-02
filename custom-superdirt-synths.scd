@@ -100,7 +100,7 @@ SynthDef(\grind, {
 }).add;
 
 
-SynthDef(\cthulu, {
+SynthDef(\cthulhu, {
     | out=0, sustain=10, freq=45, pan=0 |
 
     var line, env, detune, sub, vocal, breath, noise, dripTrig, drips, rushing,
