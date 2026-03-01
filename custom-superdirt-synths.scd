@@ -46,24 +46,30 @@ SynthDef(\chainsaw, {
     | out=0, sustain=1, freq=55, pan=0 |
 
     var line = Line.ar(0, 1, sustain, doneAction: 2);
-    var env = IEnvGen.ar(Env.adsr(0.001, 0.1, 0.6, 0.12, 1, -6), line);
+    var env = IEnvGen.ar(Env.adsr(0.008, 0.05, 0.5, 0.1, 1, -5), line);
 
-    var detune = [0.99, 1.0, 1.01];
-    var saws = Mix(detune.collect { |d| Saw.ar(freq * d) }) * 0.3;
-    var sub  = LFTri.ar(freq/2, 0, 0.5);
-    var voice = HPF.ar(saws, 80) + sub;
-
-    var cutoffBase = 200;
-    var cutoffEnvAmt = 900;
-    var lfo = SinOsc.kr(0.2) * 120;
-	var fenv = IEnvGen.ar(Env.adsr(0.01, 0.1, 0.35, 0.10, 1, -4), line);
-	var cutoff = (cutoffBase + ((fenv ** 0.6) * cutoffEnvAmt) + lfo).clip(40, 12000);
+    // Clean sub mixed in later
+    var sub = LFTri.ar((freq/2) * (1 + SinOsc.kr(0.1, 0, 0.003)), 0, 0.5);
+ 
+	var sawDetune = [0.993, 1, 1.007];
+    var pulseDetune = [0.99, 0.997, 1.003, 1.01];
+    var saws = Splay.ar(sawDetune.collect { |d| Saw.ar(freq * d) }, spread: 0.4) * 0.4;
+    var pulses = Splay.ar(pulseDetune.collect { |d| Pulse.ar(freq * d) }, spread: 0.2) * 0.6;
+	
+	var voice = HPF.ar(pulses + saws, 110);
     
-	voice = distort(voice * 2);
-    
-	voice = RLPF.ar(voice, cutoff, 0.2);
+	var cutoffBase = 150;
+    var cutoffEnvAmt = 600;
+    var lfo = SinOsc.kr(0.4) * 80 + (SinOsc.kr(2.3) * 30);
+	var fenv = IEnvGen.ar(Env.adsr(0.01, 0.06, 0.25, 0.10, 1, -4), line);
+	var cutoff = (cutoffBase + (fenv * cutoffEnvAmt) + lfo).clip(40, 12000);
 
-    voice = voice * env * 0.8;
+	var grit = HPF.ar((voice * 3).tanh * 0.02, 1200);
+	voice = (voice * 3).tanh + (voice * 0.3);
+	voice = RLPF.ar(voice, cutoff, 0.2) + grit;
+    
+	sub = LPF.ar(sub, 180) * 1.2;
+	voice = LeakDC.ar((sub + voice) * env * 0.7);
 
     OffsetOut.ar(out, DirtPan.ar(voice, ~dirt.numChannels, pan));
 }).add;
@@ -151,9 +157,9 @@ SynthDef(\cthulhu, {
 }).add;
 
 
-SynthDef(\tape, {
+SynthDef(\tapepipe, {
     | out, sustain=1, freq=440, speed=1, begin=0, end=1, pan=0, accelerate=0, offset=0 |
-    var line, breathEnv, noteEnv, base, warble, detune, noise, breath, degrade, body, output;
+    var line, breathEnv, noteEnv, base, warble, detune, noise, breath, degrade, body, saturated, output;
 
     line = Line.ar(0, 1, sustain, doneAction: 2);
     breathEnv = IEnvGen.ar(Env.adsr(0.5, 0.2, 0.8, 0.3), line);
@@ -168,8 +174,11 @@ SynthDef(\tape, {
     noise  = BPF.ar(WhiteNoise.ar(0.1), freq*0.5, 0.2);
     breath = RLPF.ar(noise, LFNoise1.kr(0.1).exprange(200, 2000), 0.2);
 
-    degrade = Decimator.ar(base + breath, 44100 * (0.5 + LFNoise1.kr(0.05).range(0,0.5)), 8);
+//    degrade = Decimator.ar(base + breath, 44100 * (0.5 + LFNoise1.kr(0.05).range(0,0.5)), 8);
+    degrade = Decimator.ar(base + breath, freq.linlin(100, 800, 22050, 40000) * (0.5 + LFNoise1.kr(0.05).range(0, 0.5)), 8);
 
+	saturated = (degrade * 1.5).tanh;  // soft clip
+	body = (saturated * 0.4) + (breath * 0.3) + (base * 0.15);
     body = (degrade * 0.5) + (breath * 0.4);
 
     output = (body * breathEnv) + (base * noteEnv);
