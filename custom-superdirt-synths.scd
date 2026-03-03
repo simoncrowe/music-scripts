@@ -46,7 +46,7 @@ SynthDef(\chainsaw, {
     | out=0, sustain=1, freq=55, pan=0 |
 
     var line = Line.ar(0, 1, sustain, doneAction: 2);
-    var env = IEnvGen.ar(Env.adsr(0.008, 0.05, 0.5, 0.1, 1, -5), line);
+    var env = IEnvGen.ar(Env.adsr(0.008, 0.04, 0.5, 0.1, 1, -5), line);
 
     // Clean sub mixed in later
     var sub = LFTri.ar((freq/2) * (1 + SinOsc.kr(0.1, 0, 0.003)), 0, 0.5);
@@ -59,17 +59,17 @@ SynthDef(\chainsaw, {
 	var voice = HPF.ar(pulses + saws, 110);
     
 	var cutoffBase = 150;
-    var cutoffEnvAmt = 600;
+    var cutoffEnvAmt = 850;
     var lfo = SinOsc.kr(0.4) * 80 + (SinOsc.kr(2.3) * 30);
-	var fenv = IEnvGen.ar(Env.adsr(0.01, 0.06, 0.25, 0.10, 1, -4), line);
+	var fenv = IEnvGen.ar(Env.adsr(0.01, 0.08, 0.1, 0.1, 1, -4), line);
 	var cutoff = (cutoffBase + (fenv * cutoffEnvAmt) + lfo).clip(40, 12000);
 
-	var grit = HPF.ar((voice * 3).tanh * 0.02, 1200);
-	voice = (voice * 3).tanh + (voice * 0.3);
+	var grit = HPF.ar((voice * 5).tanh * 0.1, 950);
+	voice = (voice * 5).tanh + (voice * 0.2);
 	voice = RLPF.ar(voice, cutoff, 0.2) + grit;
     
-	sub = LPF.ar(sub, 180) * 1.2;
-	voice = LeakDC.ar((sub + voice) * env * 0.7);
+	sub = LPF.ar(sub, 110) * 1.5;
+	voice = LeakDC.ar((sub + voice) * env);
 
     OffsetOut.ar(out, DirtPan.ar(voice, ~dirt.numChannels, pan));
 }).add;
