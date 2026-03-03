@@ -159,13 +159,13 @@ SynthDef(\cthulhu, {
 
 SynthDef(\tapepipe, {
     | out, sustain=1, freq=440, speed=1, begin=0, end=1, pan=0, accelerate=0, offset=0 |
-    var line, breathEnv, noteEnv, base, warble, detune, noise, breath, degrade, body, saturated, output;
+    var line, breathEnv, noteEnv, base, warble, detune, noise, breath, degrade, body, saturated, formants,vowelMix, f1, f2, f3, output;
 
     line = Line.ar(0, 1, sustain, doneAction: 2);
     breathEnv = IEnvGen.ar(Env.adsr(0.5, 0.2, 0.8, 0.3), line);
     noteEnv = IEnvGen.ar(Env.adsr(0.5, 0.2, 0.4, 0.2), line);
 
-    warble = LFNoise2.kr(3).range(-0.03, 0.03) + SinOsc.kr(0.2, 0, 0.01);
+    warble = LFNoise2.kr(3).range(-0.016, 0.016) + SinOsc.kr(0.2, 0, 0.01);
 
     // detuned oscillators, like a chorused tape head
     detune = freq * [1 + warble, 1 - warble*0.5];
@@ -174,14 +174,29 @@ SynthDef(\tapepipe, {
     noise  = BPF.ar(WhiteNoise.ar(0.1), freq*0.5, 0.2);
     breath = RLPF.ar(noise, LFNoise1.kr(0.1).exprange(200, 2000), 0.2);
 
-//    degrade = Decimator.ar(base + breath, 44100 * (0.5 + LFNoise1.kr(0.05).range(0,0.5)), 8);
-    degrade = Decimator.ar(base + breath, freq.linlin(100, 800, 22050, 40000) * (0.5 + LFNoise1.kr(0.05).range(0, 0.5)), 8);
+    degrade = Decimator.ar(
+        base + breath,
+        freq.linlin(100, 800, 22050, 40000) * (0.5 + LFNoise1.kr(0.05).range(0, 0.5)),
+        12
+    );
+    degrade = (degrade * 1.2).tanh;
 
-	saturated = (degrade * 1.5).tanh;  // soft clip
-	body = (saturated * 0.4) + (breath * 0.3) + (base * 0.15);
-    body = (degrade * 0.5) + (breath * 0.4);
+	saturated = (degrade * 1.3).tanh;  // soft clip
+	body = (saturated * 0.4) + (breath * 0.4) + (base * 0.2);
 
-    output = (body * breathEnv) + (base * noteEnv);
+	vowelMix = LFNoise1.kr(0.15).range(0, 2);
 
+    f1 = Select.kr(vowelMix.floor, [730, 570, 270]).lag(0.3);
+    f2 = Select.kr(vowelMix.floor, [1090, 840, 2290]).lag(0.3);
+    f3 = Select.kr(vowelMix.floor, [2440, 2410, 3010]).lag(0.3);
+
+    formants = [
+      Resonz.ar(body, f1, 0.12) * 1.0,
+      Resonz.ar(body, f2, 0.08) * 0.7,
+      Resonz.ar(body, f3, 0.06) * 0.3,
+    ].sum;
+
+    output = (body * breathEnv * 0.4) + (base * noteEnv * 0.1) + (formants * breathEnv * 1.5);
+	
     OffsetOut.ar(out, DirtPan.ar(output, ~dirt.numChannels, pan));
 }).add;
