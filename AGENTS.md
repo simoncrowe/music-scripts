@@ -33,6 +33,13 @@ This file guides agentic coding tools working in this repository.
 - Example sample renamer invocation:
   - `python3 number_pitch_classed_samples.py /path/to/source /path/to/destination`
 
+### Shell CLIs
+
+- Start the audio-oriented SuperDirt boot script:
+  - `./start-superdirt.sh`
+- Start a piece-specific SuperDirt MIDI boot script:
+  - `./start-superdirt-midi.sh flesh`
+
 ### Python Sanity Checks
 
 - There is no configured linter
